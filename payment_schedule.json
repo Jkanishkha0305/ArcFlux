@@ -1,0 +1,34 @@
+[
+  {
+    "paymentId": "pay-8eee835d",
+    "userId": "demo-user",
+    "recipient": "user1",
+    "amount": 120.0,
+    "currency": "USDC",
+    "conditions": {},
+    "status": "EXECUTED",
+    "scheduledTimestamp": "2025-11-07T04:24:24.223168+00:00",
+    "updatedAt": "2025-11-07T04:24:46.156400+00:00",
+    "createdAt": "2025-11-07T04:24:42.148849+00:00",
+    "transactionId": "txn_2641"
+  },
+  {
+    "paymentId": "pay-c7cc4e86",
+    "userId": "demo-user",
+    "recipient": "user1",
+    "amount": 120.0,
+    "currency": "USDC",
+    "conditions": {
+      "recurring": true,
+      "frequency": "interval",
+      "intervalSeconds": 5
+    },
+    "status": "FAILED",
+    "scheduledTimestamp": "2025-11-07T04:42:06.614994+00:00",
+    "updatedAt": "2025-11-07T04:42:06.623020+00:00",
+    "createdAt": "2025-11-07T04:41:51.604055+00:00",
+    "transactionId": "txn_6102",
+    "lastExecutedAt": "2025-11-07T04:42:01.614963+00:00",
+    "failureReason": "Circle API simulated failure"
+  }
+]

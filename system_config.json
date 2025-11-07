@@ -1,0 +1,41 @@
+{
+  "models": {
+    "shared": {
+      "name": "Qwen/Qwen3-0.6B",
+      "type": "hf"
+    }
+  },
+  "dataPaths": {
+    "userDatabase": "user_database.json",
+    "paymentSchedule": "payment_schedule.json",
+    "riskAssessmentDb": "risk_assessment_db.json"
+  },
+  "risk": {
+    "maxPaymentAmount": 250000,
+    "highFrequencyWindowHours": 24,
+    "highFrequencyThreshold": 5,
+    "lowBalanceBuffer": 1.1,
+    "defaultRiskTolerance": 0.5
+  },
+  "notification": {
+    "emailProvider": "sendgrid",
+    "smsProvider": "twilio",
+    "adminEmail": "ops@arcpay.ai"
+  },
+  "circle": {
+    "apiBaseUrl": "https://api.circle.com/v1",
+    "apiKey": "env:CIRCLE_API_KEY"
+  },
+  "scheduler": {
+    "tickSeconds": 60,
+    "maxBatch": 10
+  },
+  "demo": {
+    "userId": "demo-user",
+    "recipientId": "user1",
+    "defaultAmount": 120.0
+  },
+  "logging": {
+    "level": "INFO"
+  }
+}

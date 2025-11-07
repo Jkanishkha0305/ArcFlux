@@ -1,0 +1,48 @@
+[
+  {
+    "userId": "demo-user",
+    "name": "ArcPay Demo Account",
+    "email": "demo@arcpay.ai",
+    "phone": "+15555550123",
+    "auth": {
+      "method": "oauth",
+      "tokenRef": "vault:demo-user"
+    },
+    "linkedAccounts": [
+      {
+        "type": "wallet",
+        "provider": "arc",
+        "address": "arc1demoaccountxyz",
+        "currency": "USDC",
+        "balance": 2500.0
+      }
+    ],
+    "paymentHistory": [],
+    "whitelistedRecipients": [
+      {
+        "recipientId": "user1",
+        "name": "User One Ventures",
+        "address": "arc1recipientuserone",
+        "currency": "USDC"
+      },
+      {
+        "recipientId": "user2",
+        "name": "User Two Real Estate",
+        "address": "arc1recipientusertwo",
+        "currency": "USDC"
+      }
+    ],
+    "preferences": {
+      "maxPaymentAmount": 5000,
+      "notifications": {
+        "email": true,
+        "sms": true,
+        "push": true
+      }
+    },
+    "riskProfile": {
+      "riskTolerance": "medium",
+      "anomalySensitivity": 0.45
+    }
+  }
+]
