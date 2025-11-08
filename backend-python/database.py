@@ -415,3 +415,94 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
         return None
     return user
 
+
+# ============================================
+# RISK ASSESSMENT MODEL
+# ============================================
+
+class RiskAssessment(Base):
+    """
+    Stores AI risk assessments for payments.
+    """
+    __tablename__ = "risk_assessments"
+
+    id = Column(String, primary_key=True, index=True)
+    user_wallet_id = Column(String, nullable=False, index=True)
+    payment_id = Column(String, nullable=True)  # Link to scheduled payment if applicable
+    amount = Column(Float, nullable=False)
+    recipient_address = Column(String, nullable=False)
+    recipient_name = Column(String, nullable=True)
+    risk_score = Column(Float, nullable=False)  # 0.0-1.0
+    risk_level = Column(String, nullable=False)  # low, medium, high
+    decision = Column(String, nullable=False)  # approve, review, deny
+    reason = Column(Text, nullable=True)
+    balance_at_time = Column(Float, nullable=True)
+    balance_ratio = Column(Float, nullable=True)
+    is_contact = Column(Boolean, default=False)
+    created_at = Column(Integer, nullable=False)
+
+
+def create_risk_assessment(
+    db: Session,
+    user_wallet_id: str,
+    amount: float,
+    recipient_address: str,
+    risk_score: float,
+    risk_level: str,
+    decision: str,
+    reason: str = None,
+    recipient_name: str = None,
+    payment_id: str = None,
+    balance_at_time: float = None,
+    balance_ratio: float = None,
+    is_contact: bool = False
+) -> RiskAssessment:
+    """Create a new risk assessment record"""
+
+    assessment = RiskAssessment(
+        id=f"risk-{uuid.uuid4().hex[:12]}",
+        user_wallet_id=user_wallet_id,
+        payment_id=payment_id,
+        amount=amount,
+        recipient_address=recipient_address,
+        recipient_name=recipient_name,
+        risk_score=risk_score,
+        risk_level=risk_level,
+        decision=decision,
+        reason=reason,
+        balance_at_time=balance_at_time,
+        balance_ratio=balance_ratio,
+        is_contact=is_contact,
+        created_at=int(datetime.now().timestamp() * 1000)
+    )
+
+    db.add(assessment)
+    db.commit()
+    db.refresh(assessment)
+
+    return assessment
+
+
+def get_risk_assessments(
+    db: Session,
+    wallet_id: str,
+    limit: int = 20
+) -> List[RiskAssessment]:
+    """Get recent risk assessments for a user"""
+
+    return db.query(RiskAssessment).filter(
+        RiskAssessment.user_wallet_id == wallet_id
+    ).order_by(RiskAssessment.created_at.desc()).limit(limit).all()
+
+
+def get_high_risk_assessments(
+    db: Session,
+    wallet_id: str
+) -> List[RiskAssessment]:
+    """Get high-risk assessments for a user"""
+
+    return db.query(RiskAssessment).filter(
+        RiskAssessment.user_wallet_id == wallet_id,
+        RiskAssessment.risk_level == "high"
+    ).order_by(RiskAssessment.created_at.desc()).all()
+

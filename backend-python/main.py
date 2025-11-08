@@ -9,11 +9,11 @@ This is the Python equivalent of the Cloudflare
 Worker index.js file.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Query, Request
+from fastapi import FastAPI, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 import uvicorn
 from datetime import timedelta
@@ -33,12 +33,27 @@ from database import (
     get_payment_history, cancel_scheduled_payment,
     ScheduledPayment, PaymentHistory,
     create_contact, get_user_contacts, delete_contact,
-    create_user, authenticate_user, User
+    create_user, authenticate_user, User,
+    record_payment_history,
+    create_risk_assessment, get_risk_assessments, get_high_risk_assessments
 )
-from circle_integration import circle_api
+from circle_integration import circle_api, CircleAPI
 from ai_agent import ai_agent, interval_to_ms
+from payment_agent import payment_agent
 from scheduler import payment_scheduler
 from wallet_creation import create_wallet_for_user, create_wallet_for_user_with_api_key
+from guardian_agent import guardian_agent
+from query_agent import query_agent
+from balance_monitor import balance_monitor
+from stock_agent import stock_agent
+
+# Voice transcription (optional - only if ElevenLabs API key is configured)
+try:
+    from voice import TranscriptionHandler
+    VOICE_AVAILABLE = True
+except ImportError:
+    VOICE_AVAILABLE = False
+    print("Warning: Voice transcription module not available. Install elevenlabs package.")
 
 # ============================================
 # FASTAPI APPLICATION
@@ -93,6 +108,57 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     success: bool
     answer: str
+    dashboard: Optional[Dict] = None
+
+
+class AgentPayRequest(BaseModel):
+    walletId: str
+    command: str
+    execute: bool = False
+
+
+class AgentPayResponse(BaseModel):
+    success: bool
+    plan: Dict
+    message: Optional[str] = None
+    transaction: Optional[Dict] = None
+    error: Optional[str] = None
+
+
+def _get_circle_client_for_wallet(db: Session, wallet_id: str):
+    """Return the appropriate Circle API client for a user wallet."""
+
+    user = db.query(User).filter(User.wallet_id == wallet_id).first()
+
+    if user and user.entity_secret:
+        api_key = user.circle_api_key or settings.circle_api_key
+        if not api_key:
+            raise HTTPException(
+                status_code=400,
+                detail="Circle API key not configured for this wallet."
+            )
+        return CircleAPI(api_key=api_key, entity_secret=user.entity_secret), user
+
+    if not settings.circle_api_key or not settings.circle_entity_secret:
+        raise HTTPException(
+            status_code=400,
+            detail="Circle API credentials are not configured on the server."
+        )
+
+    return circle_api, user
+
+
+def _serialize_contacts(contacts: List) -> List[Dict]:
+    """Simplify SQLAlchemy contact rows into plain dicts."""
+
+    return [
+        {
+            "id": contact.id,
+            "name": contact.name,
+            "address": contact.address,
+        }
+        for contact in contacts
+    ]
 
 # ============================================
 # STARTUP/SHUTDOWN EVENTS
@@ -166,14 +232,28 @@ async def create_payment(
     """
     try:
         # Validate inputs
-        if not request.walletId or not request.recipient or not request.amount:
-            raise Exception("Missing required fields")
+        if not request.walletId:
+            raise HTTPException(status_code=400, detail="Wallet ID is required. Please set up your wallet first in Profile Settings.")
+        if not request.recipient:
+            raise HTTPException(status_code=400, detail="Recipient address is required")
+        if not request.amount or request.amount <= 0:
+            raise HTTPException(status_code=400, detail="Amount must be greater than 0")
         
         if not circle_api.is_valid_address(request.recipient):
-            raise Exception("Invalid recipient address")
+            raise HTTPException(status_code=400, detail=f"Invalid recipient address format: {request.recipient}")
+        
+        # Check if user has wallet set up
+        user = db.query(User).filter(User.wallet_id == request.walletId).first()
+        if not user:
+            # Wallet ID doesn't belong to any user - might be from env var or invalid
+            # For non-user wallets, we still allow but need to check if wallet exists
+            print(f"[CREATE-PAYMENT] Warning: Wallet ID {request.walletId} not found in user database")
         
         # Convert interval to milliseconds
-        interval_ms = interval_to_ms(request.interval)
+        try:
+            interval_ms = interval_to_ms(request.interval)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid interval '{request.interval}': {str(e)}")
         
         # Create scheduled payment
         payment = create_scheduled_payment(
@@ -189,15 +269,28 @@ async def create_payment(
         if interval_ms == 0:
             try:
                 # Get user's API key and entity secret if this is a user wallet
-                user = db.query(User).filter(User.wallet_id == request.walletId).first()
                 if user and user.entity_secret:
                     # Use user's Circle API instance with their API key
                     from circle_integration import CircleAPI
-                    user_api_key = user.circle_api_key or settings.circle_api_key
-                    user_circle_api = CircleAPI(api_key=user_api_key, entity_secret=user.entity_secret)
+                    if not user.circle_api_key:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Circle API key not configured. Please add your API key in Profile Settings to execute payments."
+                        )
+                    user_circle_api = CircleAPI(api_key=user.circle_api_key, entity_secret=user.entity_secret)
                     api_instance = user_circle_api
+                elif user and not user.entity_secret:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Wallet not properly configured. Please regenerate your wallet in Profile Settings."
+                    )
                 else:
-                    # Use default Circle API instance
+                    # Use default Circle API instance (for legacy/non-user wallets)
+                    if not settings.circle_api_key:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Circle API key not configured. Please configure your API key."
+                        )
                     api_instance = circle_api
                 
                 # Check balance first
@@ -267,10 +360,13 @@ async def create_payment(
                 traceback.print_exc()
                 
                 # Return error to user - don't create payment if execution fails
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Failed to execute payment: {error_msg}"
-                )
+                # Include more context in error message
+                if "Insufficient balance" in error_msg:
+                    raise HTTPException(status_code=400, detail=error_msg)
+                elif "wallet" in error_msg.lower() or "not found" in error_msg.lower():
+                    raise HTTPException(status_code=400, detail=f"Wallet error: {error_msg}. Please ensure your wallet is set up correctly.")
+                else:
+                    raise HTTPException(status_code=400, detail=f"Failed to execute payment: {error_msg}")
         
         return CreatePaymentResponse(
             success=True,
@@ -286,8 +382,16 @@ async def create_payment(
             message="Payment executed immediately" if interval_ms == 0 and transaction_result and transaction_result.get("executed") else "Payment scheduled successfully"
         )
     
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # Log unexpected errors
+        import traceback
+        error_msg = str(e)
+        print(f"[CREATE-PAYMENT] ❌ Unexpected error: {error_msg}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {error_msg}")
 
 @app.get("/api/payments")
 async def get_payments(
@@ -455,44 +559,371 @@ async def handle_query(
     db: Session = Depends(get_db)
 ):
     """
-    Handle user queries about payments.
-    
+    Handle user queries about payments using enhanced QueryAgent.
+
     Example:
         POST /api/query
         {"query": "What's my balance?", "walletId": "wallet-123"}
     """
     try:
-        # Get context
-        context = {}
-        
-        if request.walletId:
-            # Get user's API key and entity secret if this is a user wallet
-            user = db.query(User).filter(User.wallet_id == request.walletId).first()
-            if user and user.entity_secret:
-                # Use user's Circle API instance with their API key
-                from circle_integration import CircleAPI
-                user_api_key = user.circle_api_key or settings.circle_api_key
-                user_circle_api = CircleAPI(api_key=user_api_key, entity_secret=user.entity_secret)
-                api_instance = user_circle_api
-            else:
-                # Use default Circle API instance
-                api_instance = circle_api
-            
-            balance = api_instance.get_wallet_balance(request.walletId)
-            payments = get_user_scheduled_payments(db, request.walletId)
-            
-            context = {
-                "balance": balance,
-                "activePayments": len(payments),
-                "recentTransactions": "see history"
-            }
-        
-        answer = ai_agent.handle_query(request.query, context)
-        
-        return QueryResponse(success=True, answer=answer)
-    
+        if not request.walletId:
+            return QueryResponse(success=False, answer="Wallet ID is required for queries.")
+
+        # Get user's API instance
+        user = db.query(User).filter(User.wallet_id == request.walletId).first()
+        if user and user.entity_secret:
+            from circle_integration import CircleAPI
+            user_api_key = user.circle_api_key or settings.circle_api_key
+            api_instance = CircleAPI(api_key=user_api_key, entity_secret=user.entity_secret)
+        else:
+            api_instance = circle_api
+
+        # Use enhanced QueryAgent
+        result = query_agent.answer_query(
+            question=request.query,
+            wallet_id=request.walletId,
+            db=db,
+            circle_api=api_instance
+        )
+
+        if result["success"]:
+            return QueryResponse(
+                success=True, 
+                answer=result["answer"],
+                dashboard=result.get("dashboard")  # Include dashboard data if present
+            )
+        else:
+            return QueryResponse(success=False, answer=result["answer"])
+
     except Exception as e:
         return QueryResponse(success=False, answer=f"Error: {str(e)}")
+
+
+@app.post("/api/agent/pay", response_model=AgentPayResponse)
+async def agent_pay_endpoint(
+    request: AgentPayRequest,
+    db: Session = Depends(get_db)
+):
+    """Use the MLAI-powered agent to interpret and optionally execute payments or stock purchases."""
+
+    if not payment_agent.is_ready:
+        raise HTTPException(status_code=503, detail="Payment agent is not configured.")
+
+    if not request.walletId:
+        raise HTTPException(status_code=400, detail="Wallet ID is required.")
+
+    # Check for stock purchase intent
+    stock_keywords = ["stock", "stocks", "equity", "equities", "share", "shares", "buy stock", "purchase stock"]
+    command_lower = request.command.lower()
+    is_stock_intent = any(keyword in command_lower for keyword in stock_keywords)
+
+    if is_stock_intent:
+        # Handle stock purchase
+        return await _handle_stock_purchase(request, db)
+
+    # Handle regular payment
+    contacts = get_user_contacts(db, request.walletId)
+    if not contacts:
+        raise HTTPException(status_code=400, detail="No contacts found for this wallet.")
+
+    contact_dicts = _serialize_contacts(contacts)
+    plan = payment_agent.plan_payment(request.command, contact_dicts)
+
+    if plan.get("action") != "send_payment":
+        raise HTTPException(status_code=400, detail="Agent could not find a payment instruction in that text.")
+
+    amount = float(plan.get("amount") or 0)
+    currency = (plan.get("currency") or "USDC").upper()
+    matched_contact = plan.get("contact")
+
+    if currency != "USDC":
+        raise HTTPException(status_code=400, detail="Only USDC payments are supported.")
+
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Could not determine a valid amount from that command.")
+
+    if not matched_contact:
+        raise HTTPException(status_code=400, detail="Could not map that request to a saved contact.")
+
+    to_address = matched_contact.get("address")
+    if not to_address or not circle_api.is_valid_address(to_address):
+        raise HTTPException(status_code=400, detail="The selected contact is missing a valid wallet address.")
+
+    plan["contact"] = matched_contact
+
+    # Get balance for risk assessment
+    api_instance, user = _get_circle_client_for_wallet(db, request.walletId)
+    balance = api_instance.get_wallet_balance(request.walletId)
+
+    try:
+        balance_value = float(balance)
+    except (TypeError, ValueError):
+        balance_value = 0.0
+
+    # Run Guardian risk assessment
+    risk_assessment = guardian_agent.assess_payment_risk(
+        amount=amount,
+        recipient_address=to_address,
+        recipient_name=matched_contact.get("name", ""),
+        sender_balance=balance_value,
+        is_contact=True  # From contacts list
+    )
+
+    # Store risk assessment in database
+    create_risk_assessment(
+        db=db,
+        user_wallet_id=request.walletId,
+        amount=amount,
+        recipient_address=to_address,
+        recipient_name=matched_contact.get("name"),
+        risk_score=risk_assessment["riskScore"],
+        risk_level=risk_assessment["riskLevel"],
+        decision=risk_assessment["decision"],
+        reason=risk_assessment.get("reason"),
+        balance_at_time=balance_value,
+        balance_ratio=risk_assessment.get("balanceRatio"),
+        is_contact=True
+    )
+
+    # Add risk assessment to plan
+    plan["riskAssessment"] = risk_assessment
+
+    if plan.get("needsConfirmation") and request.execute:
+        raise HTTPException(
+            status_code=400,
+            detail="Agent requested confirmation before executing. Review the plan first."
+        )
+
+    # If just parsing (not executing), return plan with risk assessment
+    if not request.execute:
+        return AgentPayResponse(
+            success=True,
+            plan=plan,
+            message=f"Plan created with {risk_assessment['riskLevel']} risk. Resend with execute=true to send the payment."
+        )
+
+    # Block high-risk payments that were denied by guardian
+    if risk_assessment["decision"] == "deny":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Payment denied by security guardian: {risk_assessment.get('reason', 'High risk detected')}"
+        )
+
+    # Final balance check (redundant but explicit)
+    if balance_value < amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance ({balance} USDC) to send {amount} USDC."
+        )
+
+    # Execute the transaction
+    transaction = api_instance.transfer_usdc(
+        from_wallet_id=request.walletId,
+        to_address=to_address,
+        amount=amount
+    )
+
+    record_payment_history(
+        db=db,
+        scheduled_payment_id=None,
+        from_wallet_id=request.walletId,
+        to_address=to_address,
+        amount=amount,
+        status=transaction.get("status", "pending"),
+        transaction_hash=transaction.get("txHash")
+    )
+
+    return AgentPayResponse(
+        success=True,
+        plan=plan,
+        transaction=transaction,
+        message="Payment initiated successfully."
+    )
+
+
+async def _handle_stock_purchase(request: AgentPayRequest, db: Session) -> AgentPayResponse:
+    """Handle stock purchase request."""
+    # Parse stock purchase intent
+    stock_plan = payment_agent._plan_stock_purchase(request.command)
+    
+    if stock_plan.get("action") != "buy_stock":
+        raise HTTPException(status_code=400, detail="Could not parse stock purchase intent.")
+    
+    # Check if a stock symbol is explicitly mentioned in the command
+    # This handles cases where user selects a stock from recommendations
+    selected_symbol = stock_plan.get("stockSymbol")
+    if not selected_symbol:
+        # Try to extract symbol from command (might be appended by frontend)
+        import re
+        # Look for 3-5 letter uppercase sequences (stock symbols) at the end of command
+        # This handles cases where user says "Buy stock for 10 USDC BNKX"
+        command_upper = request.command.upper()
+        # First, try to find stock symbols in the repository from the command
+        from stock_agent import stock_agent
+        # Get all stock symbols
+        all_stocks = stock_agent.repo.list_all()
+        stock_symbols = [s.get("symbol", "").upper() for s in all_stocks if s.get("symbol")]
+        
+        # Look for any stock symbol in the command
+        for symbol in stock_symbols:
+            if symbol in command_upper:
+                # Check if it's a word boundary match (not part of another word)
+                pattern = r'\b' + re.escape(symbol) + r'\b'
+                if re.search(pattern, command_upper):
+                    selected_symbol = symbol
+                    break
+        
+        # Fallback: try regex pattern matching
+        if not selected_symbol:
+            symbol_match = re.search(r'\b([A-Z]{3,5})\b', command_upper)
+            if symbol_match:
+                potential_symbol = symbol_match.group(1)
+                # Verify it's a valid stock symbol
+                if stock_agent.repo.find(potential_symbol):
+                    selected_symbol = potential_symbol
+    
+    # Prepare intent payload for stock agent
+    intent_payload = {
+        "userId": request.walletId,
+        "intent": "stock_purchase",
+        "entities": {
+            "amount": stock_plan.get("amount"),
+            "currency": stock_plan.get("currency", "USDC"),
+            "stockRequest": {
+                "sector": stock_plan.get("sector"),
+                "preference": stock_plan.get("preference"),
+                "budget": stock_plan.get("amount")
+            },
+            "selectedStock": selected_symbol,
+            "rawText": request.command
+        }
+    }
+    
+    # Process with stock agent
+    stock_result = stock_agent.process(intent_payload)
+    
+    status = stock_result.get("status")
+    
+    if status == "AWAITING_SELECTION":
+        # Return recommendations for user to select
+        return AgentPayResponse(
+            success=True,
+            plan={
+                "action": "buy_stock",
+                "recommendations": stock_result.get("recommendations", []),
+                "prompt": stock_result.get("prompt"),
+                "needsSelection": True
+            },
+            message=stock_result.get("prompt", "Please select a stock from the recommendations.")
+        )
+    
+    if status == "INVALID_SELECTION":
+        raise HTTPException(status_code=400, detail=stock_result.get("message", "Invalid stock selection."))
+    
+    if status == "NO_MATCHES":
+        raise HTTPException(status_code=400, detail=stock_result.get("message", "No stocks matched your criteria."))
+    
+    if status != "READY_FOR_GUARDIAN":
+        raise HTTPException(status_code=400, detail=f"Unexpected stock agent status: {status}")
+    
+    # Stock selected, route to guardian for risk assessment
+    selection = stock_result.get("selection", {})
+    payload = stock_result.get("payload", {})
+    
+    # Get balance for risk assessment
+    api_instance, user = _get_circle_client_for_wallet(db, request.walletId)
+    balance = api_instance.get_wallet_balance(request.walletId)
+    
+    try:
+        balance_value = float(balance)
+    except (TypeError, ValueError):
+        balance_value = 0.0
+    
+    amount = payload.get("entities", {}).get("amount", 0)
+    recipient_address = payload.get("entities", {}).get("recipientAddress", "")
+    recipient_name = payload.get("entities", {}).get("recipientName", "")
+    
+    # Run Guardian risk assessment
+    risk_assessment = guardian_agent.assess_payment_risk(
+        amount=amount,
+        recipient_address=recipient_address,
+        recipient_name=recipient_name,
+        sender_balance=balance_value,
+        is_contact=False  # Stock purchase, not a contact
+    )
+    
+    # Store risk assessment
+    create_risk_assessment(
+        db=db,
+        user_wallet_id=request.walletId,
+        amount=amount,
+        recipient_address=recipient_address,
+        recipient_name=recipient_name,
+        risk_score=risk_assessment["riskScore"],
+        risk_level=risk_assessment["riskLevel"],
+        decision=risk_assessment["decision"],
+        reason=risk_assessment.get("reason"),
+        balance_at_time=balance_value,
+        balance_ratio=risk_assessment.get("balanceRatio"),
+        is_contact=False
+    )
+    
+    # Build response plan
+    plan = {
+        "action": "buy_stock",
+        "stock": selection,
+        "amount": amount,
+        "currency": "USDC",
+        "riskAssessment": risk_assessment
+    }
+    
+    # If not executing, return plan
+    if not request.execute:
+        return AgentPayResponse(
+            success=True,
+            plan=plan,
+            message=f"Stock purchase plan created for {selection.get('symbol')} with {risk_assessment['riskLevel']} risk. Resend with execute=true to complete the purchase."
+        )
+    
+    # Block high-risk purchases
+    if risk_assessment["decision"] == "deny":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Stock purchase denied by security guardian: {risk_assessment.get('reason', 'High risk detected')}"
+        )
+    
+    # Final balance check
+    if balance_value < amount:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient balance ({balance} USDC) to purchase {amount} USDC worth of stock."
+        )
+    
+    # Execute the transaction (stock purchase as payment to stock address)
+    transaction = api_instance.transfer_usdc(
+        from_wallet_id=request.walletId,
+        to_address=recipient_address,
+        amount=amount
+    )
+    
+    # Record payment history
+    record_payment_history(
+        db=db,
+        scheduled_payment_id=None,
+        from_wallet_id=request.walletId,
+        to_address=recipient_address,
+        amount=amount,
+        status=transaction.get("status", "pending"),
+        transaction_hash=transaction.get("txHash")
+    )
+    
+    return AgentPayResponse(
+        success=True,
+        plan=plan,
+        transaction=transaction,
+        message=f"Stock purchase for {selection.get('symbol')} initiated successfully."
+    )
+
 
 # ============================================
 # CONTACTS ENDPOINTS
@@ -839,6 +1270,93 @@ async def get_user_profile(
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================
+# VOICE TRANSCRIPTION ENDPOINT
+# ============================================
+# Note: This endpoint is completely separate from transaction functionality
+# It only handles audio transcription and does not interact with payments or wallets
+
+class TranscribeResponse(BaseModel):
+    """Response model for transcription endpoint"""
+    success: bool
+    transcription: Optional[str] = None
+    error: Optional[str] = None
+    language: Optional[str] = None
+
+@app.post("/api/transcribe-audio", response_model=TranscribeResponse)
+async def transcribe_audio(
+    audio_file: UploadFile = File(..., description="Audio file to transcribe (WAV, MP3, etc.)"),
+    language: Optional[str] = Query("en", description="Language code (default: en)")
+):
+    """
+    Transcribe audio file using ElevenLabs API.
+    
+    This endpoint is completely isolated from transaction functionality.
+    It only handles audio transcription and returns text.
+    
+    Args:
+        audio_file: Audio file to transcribe
+        language: Language code (default: "en")
+    
+    Returns:
+        Transcription result with text or error message
+    """
+    # Check if voice transcription is available
+    if not VOICE_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Voice transcription not available. Please install elevenlabs package and configure ELEVENLABS_API_KEY."
+        )
+    
+    # Check if API key is configured
+    if not settings.elevenlabs_api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ElevenLabs API key not configured. Please set ELEVENLABS_API_KEY in environment variables."
+        )
+    
+    try:
+        # Initialize transcription handler
+        transcriber = TranscriptionHandler(api_key=settings.elevenlabs_api_key)
+        
+        # Read audio file
+        audio_bytes = await audio_file.read()
+        
+        # Validate file size (max 25MB for ElevenLabs)
+        max_size = 25 * 1024 * 1024  # 25MB
+        if len(audio_bytes) > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Audio file too large. Maximum size is 25MB, got {len(audio_bytes) / 1024 / 1024:.2f}MB"
+            )
+        
+        # Transcribe audio
+        result = transcriber.transcribe_file(audio_bytes, language=language)
+        
+        if result["success"]:
+            return TranscribeResponse(
+                success=True,
+                transcription=result["text"],
+                language=result["language"]
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Transcription failed: {result.get('error', 'Unknown error')}"
+            )
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        print(f"[TRANSCRIBE] Error transcribing audio: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+# ============================================
 # RUN SERVER
 # ============================================
 
@@ -849,4 +1367,3 @@ if __name__ == "__main__":
         port=settings.api_port,
         reload=True  # Auto-reload on code changes (development only)
     )
-

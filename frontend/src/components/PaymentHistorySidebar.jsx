@@ -44,23 +44,23 @@ function PaymentHistorySidebar({ apiUrl, walletId }) {
   }
 
   return (
-    <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200/50 h-full flex flex-col">
-      <div className="px-6 py-4 border-b border-gray-200">
+    <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200/50 h-full flex flex-col max-h-full">
+      <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
         <h3 className="text-lg font-bold text-gray-900 flex items-center">
-          <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-6 h-6 mr-3 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Recent History
         </h3>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
         {loading ? (
           <div className="flex justify-center items-center h-32">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : history.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <p>No transactions yet</p>
@@ -69,12 +69,12 @@ function PaymentHistorySidebar({ apiUrl, walletId }) {
           history.map((item) => (
             <div
               key={item.id || item.transaction_hash}
-              className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer border border-gray-200/50"
+              className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-3 hover:shadow-md transition-all cursor-pointer border border-gray-200/50"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                  <div className="flex items-center space-x-2 mb-1.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
                       item.status === 'completed' 
                         ? 'bg-green-100 text-green-800' 
                         : item.status === 'pending'
@@ -85,8 +85,8 @@ function PaymentHistorySidebar({ apiUrl, walletId }) {
                     </span>
                     <span className="text-xs text-gray-500">{formatDate(item.executed_at)}</span>
                   </div>
-                  <p className="text-lg font-bold text-gray-900">{item.amount} USDC</p>
-                  <p className="text-sm text-gray-600 font-mono">{shortenAddress(item.to_address)}</p>
+                  <p className="text-base font-bold text-gray-900">{item.amount} USDC</p>
+                  <p className="text-xs text-gray-600 font-mono">{shortenAddress(item.to_address)}</p>
                 </div>
                 {item.transaction_hash && (
                   <button
@@ -104,7 +104,7 @@ function PaymentHistorySidebar({ apiUrl, walletId }) {
           ))
         )}
       </div>
-      <div className="px-6 py-4 border-t border-gray-200">
+      <div className="px-4 py-3 border-t border-gray-200 flex-shrink-0">
         <Link
           to="/history"
           className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center justify-center"
@@ -117,4 +117,3 @@ function PaymentHistorySidebar({ apiUrl, walletId }) {
 }
 
 export default PaymentHistorySidebar;
-

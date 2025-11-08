@@ -27,47 +27,17 @@ class CircleAPI:
     """
     
     def __init__(self, api_key: str = None, entity_secret: str = None):
+        """
+        Initialize Circle API client.
+        
+        Args:
+            api_key: Circle API key (optional, uses settings if not provided)
+            entity_secret: Entity secret as hex string (optional, uses settings if not provided)
+        """
         self.api_key = api_key or settings.circle_api_key
+        self.entity_secret = entity_secret or settings.circle_entity_secret
         
-        # Handle entity_secret - it can be:
-        # 1. Hex string from database (64 chars = 32 bytes)
-        # 2. Hex string from .env file
-        # 3. Already bytes (from settings)
-        if entity_secret:
-            if isinstance(entity_secret, str):
-                # Check if it's a hex string
-                try:
-                    # Try to convert hex string to bytes
-                    if len(entity_secret) == 64:  # 32 bytes as hex = 64 chars
-                        self.entity_secret = bytes.fromhex(entity_secret)
-                    elif len(entity_secret) > 64:
-                        # Might be base64 or other format - try hex first
-                        try:
-                            self.entity_secret = bytes.fromhex(entity_secret)
-                        except ValueError:
-                            # Not hex, keep as string (might be base64 or other format)
-                            self.entity_secret = entity_secret
-                    else:
-                        # Short string, probably not hex - keep as is
-                        self.entity_secret = entity_secret
-                except ValueError:
-                    # Not valid hex, keep as string
-                    self.entity_secret = entity_secret
-            else:
-                # Already bytes or other type
-                self.entity_secret = entity_secret
-        else:
-            # Use from settings (which might be hex string from .env)
-            env_secret = settings.circle_entity_secret
-            if isinstance(env_secret, str) and len(env_secret) == 64:
-                try:
-                    self.entity_secret = bytes.fromhex(env_secret)
-                except ValueError:
-                    self.entity_secret = env_secret
-            else:
-                self.entity_secret = env_secret
-        
-        # Initialize SDK client (only if we have both api_key and entity_secret)
+        # Initialize SDK client - SDK will handle entity secret encryption automatically
         if self.api_key and self.entity_secret:
             try:
                 self.client = utils.init_developer_controlled_wallets_client(
@@ -79,6 +49,8 @@ class CircleAPI:
                 self.transactions_api = developer_controlled_wallets.TransactionsApi(self.client)
             except Exception as e:
                 print(f"Warning: Failed to initialize Circle SDK client: {e}")
+                import traceback
+                traceback.print_exc()
                 self.client = None
                 self.wallets_api = None
                 self.transactions_api = None
@@ -283,8 +255,7 @@ class CircleAPI:
         """
         try:
             from circle.web3.developer_controlled_wallets.models import (
-                CreateTransferTransactionForDeveloperRequest,
-                EstimateTransferTransactionFeeRequest
+                CreateTransferTransactionForDeveloperRequest
             )
             
             # Get token ID from wallet balance (USDC token on Arc Testnet)
@@ -318,6 +289,8 @@ class CircleAPI:
             print(f"Using SCA fee level: MEDIUM")
 
             # Build request with feeLevel for SCA wallets
+            # The SDK client (initialized with entity_secret) automatically handles
+            # entity secret encryption when making requests
             request_dict = {
                 "idempotencyKey": idempotency_key,
                 "amounts": [str(amount)],

@@ -73,42 +73,42 @@ function Dashboard({ apiUrl, walletId, user, onWalletGenerated }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 flex flex-col">
       {/* Top Stats Bar */}
-      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-[1600px] mx-auto px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
+      <div className="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm flex-shrink-0">
+        <div className="w-full px-6 py-3">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 Welcome back, {user?.name || 'User'} 👋
               </h2>
-              <p className="text-sm text-gray-600 mt-1">Manage your payments effortlessly</p>
+              <p className="text-xs text-gray-600 mt-0.5">Manage your payments effortlessly</p>
             </div>
             <Link
               to="/create"
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+              className="px-4 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg transform hover:scale-105 transition-all duration-200 text-sm"
             >
               + New Payment
             </Link>
           </div>
           
           {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
-              <p className="text-xs text-blue-600 font-medium mb-1">Active Transactions</p>
-              <p className="text-2xl font-bold text-blue-900">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 border border-blue-200">
+              <p className="text-xs text-blue-600 font-medium mb-0.5">Active Transactions</p>
+              <p className="text-xl font-bold text-blue-900">
                 {loading ? '...' : activePayments}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
-              <p className="text-xs text-purple-600 font-medium mb-1">Total Transferred</p>
-              <p className="text-2xl font-bold text-purple-900">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-3 border border-purple-200">
+              <p className="text-xs text-purple-600 font-medium mb-0.5">Total Transferred</p>
+              <p className="text-xl font-bold text-purple-900">
                 {loading ? '...' : `${totalTransferred} USDC`}
               </p>
             </div>
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200">
-              <p className="text-xs text-green-600 font-medium mb-1">Wallet Balance</p>
-              <p className="text-2xl font-bold text-green-900">
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 border border-green-200">
+              <p className="text-xs text-green-600 font-medium mb-0.5">Wallet Balance</p>
+              <p className="text-xl font-bold text-green-900">
                 {loading ? '...' : `${balance} USDC`}
               </p>
             </div>
@@ -117,10 +117,10 @@ function Dashboard({ apiUrl, walletId, user, onWalletGenerated }) {
       </div>
 
       {/* Main Grid Layout */}
-      <div className="max-w-[1600px] mx-auto px-6 py-8">
+      <div className="w-full px-6 py-4 flex-1 min-h-0 overflow-hidden flex flex-col">
         {/* Wallet Setup Prompt - Show if user doesn't have wallet */}
         {showWalletSetup && user && !hasWallet && (
-          <div className="mb-6">
+          <div className="mb-4 flex-shrink-0">
             <WalletSetup
               apiUrl={apiUrl}
               userId={user.id}
@@ -131,7 +131,7 @@ function Dashboard({ apiUrl, walletId, user, onWalletGenerated }) {
                 }
               }}
             />
-            <div className="mt-4 text-center">
+            <div className="mt-3 text-center">
               <Link
                 to="/profile"
                 className="text-blue-600 hover:text-blue-800 text-sm underline"
@@ -143,30 +143,32 @@ function Dashboard({ apiUrl, walletId, user, onWalletGenerated }) {
         )}
 
         {/* Main Content - Only show if wallet exists */}
-        {hasWallet ? (
-          <div className="grid grid-cols-12 gap-6" style={{ minHeight: 'calc(100vh - 350px)' }}>
-            {/* Left - Payment History */}
-            <div className="col-span-3">
-              <PaymentHistorySidebar apiUrl={apiUrl} walletId={effectiveWalletId} />
-            </div>
+        <div className="flex-1 min-h-0">
+          {hasWallet ? (
+            <div className="grid grid-cols-3 gap-6 h-full min-h-0">
+              {/* Left - Payment History */}
+              <div className="h-[85%] min-h-0 flex flex-col">
+                <PaymentHistorySidebar apiUrl={apiUrl} walletId={effectiveWalletId} />
+              </div>
 
-            {/* Center-Left - Query Agent (Chat Interface) */}
-            <div className="col-span-5">
-              <QueryAgent apiUrl={apiUrl} walletId={effectiveWalletId} />
-            </div>
+              {/* Center - Query Agent (Chat Interface) */}
+              <div className="h-[85%] min-h-0 flex flex-col">
+                <QueryAgent apiUrl={apiUrl} walletId={effectiveWalletId} />
+              </div>
 
-            {/* Right - Contacts (3 Columns) */}
-            <div className="col-span-4">
-              <ContactsCenter apiUrl={apiUrl} walletId={effectiveWalletId} />
+              {/* Right - Contacts */}
+              <div className="h-[85%] min-h-0 flex flex-col">
+                <ContactsCenter apiUrl={apiUrl} walletId={effectiveWalletId} />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">
-              Set up your wallet to get started with ArcFlux.
-            </p>
-          </div>
-        )}
+          ) : (
+            <div className="h-full flex items-center justify-center text-center px-6">
+              <p className="text-gray-600">
+                Set up your wallet to get started with ArcFlux.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

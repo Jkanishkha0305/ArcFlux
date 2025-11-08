@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     ai_model: str = "gpt-3.5-turbo"
+    mlai_api_key: str = ""
+    mlai_model: str = "Qwen/QwQ-32B"
+    
+    # ============================================
+    # VOICE TRANSCRIPTION
+    # ============================================
+    elevenlabs_api_key: str = ""  # ElevenLabs API key for voice transcription
     
     # ============================================
     # DATABASE
@@ -76,6 +83,9 @@ class Settings(BaseSettings):
         self.circle_entity_secret = os.getenv("CIRCLE_ENTITY_SECRET", self.circle_entity_secret)
         self.openai_api_key = os.getenv("OPENAI_API_KEY", self.openai_api_key)
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", self.anthropic_api_key)
+        self.elevenlabs_api_key = os.getenv("ELEVENLABS_API_KEY", self.elevenlabs_api_key)
+        self.mlai_api_key = os.getenv("MLAI_API_KEY", self.mlai_api_key)
+        self.mlai_model = os.getenv("MLAI_MODEL", self.mlai_model)
     
     @property
     def cors_origins_list(self) -> List[str]:
@@ -85,4 +95,3 @@ class Settings(BaseSettings):
 
 # Global settings instance
 settings = Settings()
-
