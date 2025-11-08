@@ -1,0 +1,138 @@
+[
+  {
+    "symbol": "BNKX",
+    "name": "BankX Capital",
+    "sector": "Banking",
+    "price": 48.72,
+    "peRatio": 8.9,
+    "dividendYield": 0.025,
+    "peerAveragePrice": 63.15,
+    "peerAveragePe": 12.1,
+    "beta": 1.1,
+    "esgScore": 0.62,
+    "metrics": {
+      "returnOnEquity": 0.14,
+      "netMargin": 0.21,
+      "debtToEquity": 0.48
+    }
+  },
+  {
+    "symbol": "HARB",
+    "name": "Harborstone Financial",
+    "sector": "Banking",
+    "price": 42.1,
+    "peRatio": 7.5,
+    "dividendYield": 0.031,
+    "peerAveragePrice": 55.0,
+    "peerAveragePe": 11.4,
+    "beta": 0.95,
+    "esgScore": 0.57,
+    "metrics": {
+      "returnOnEquity": 0.16,
+      "netMargin": 0.24,
+      "debtToEquity": 0.38
+    }
+  },
+  {
+    "symbol": "CLDB",
+    "name": "Cloudbridge Lending",
+    "sector": "Banking",
+    "price": 37.9,
+    "peRatio": 6.8,
+    "dividendYield": 0.018,
+    "peerAveragePrice": 47.5,
+    "peerAveragePe": 10.6,
+    "beta": 1.05,
+    "esgScore": 0.6,
+    "metrics": {
+      "returnOnEquity": 0.11,
+      "netMargin": 0.18,
+      "debtToEquity": 0.52
+    }
+  },
+  {
+    "symbol": "SOLR",
+    "name": "Solara Renewables",
+    "sector": "Energy",
+    "price": 28.45,
+    "peRatio": 15.2,
+    "dividendYield": 0.0,
+    "peerAveragePrice": 32.0,
+    "peerAveragePe": 18.7,
+    "beta": 1.25,
+    "esgScore": 0.81,
+    "metrics": {
+      "revenueGrowth": 0.34,
+      "capacityFactor": 0.47,
+      "cashPerShare": 5.11
+    }
+  },
+  {
+    "symbol": "NEPT",
+    "name": "Neptune Energy Storage",
+    "sector": "Energy",
+    "price": 31.05,
+    "peRatio": 13.4,
+    "dividendYield": 0.017,
+    "peerAveragePrice": 36.2,
+    "peerAveragePe": 16.9,
+    "beta": 1.14,
+    "esgScore": 0.77,
+    "metrics": {
+      "revenueGrowth": 0.27,
+      "capacityFactor": 0.52,
+      "cashPerShare": 4.6
+    }
+  },
+  {
+    "symbol": "QNTC",
+    "name": "Quantico Systems",
+    "sector": "Technology",
+    "price": 62.4,
+    "peRatio": 19.1,
+    "dividendYield": 0.0,
+    "peerAveragePrice": 75.2,
+    "peerAveragePe": 24.8,
+    "beta": 1.32,
+    "esgScore": 0.69,
+    "metrics": {
+      "revenueGrowth": 0.41,
+      "grossMargin": 0.63,
+      "netCash": 1.8
+    }
+  },
+  {
+    "symbol": "STRM",
+    "name": "Streamware Platforms",
+    "sector": "Technology",
+    "price": 54.3,
+    "peRatio": 17.3,
+    "dividendYield": 0.0,
+    "peerAveragePrice": 66.5,
+    "peerAveragePe": 22.2,
+    "beta": 1.28,
+    "esgScore": 0.66,
+    "metrics": {
+      "revenueGrowth": 0.36,
+      "grossMargin": 0.58,
+      "netCash": 1.2
+    }
+  },
+  {
+    "symbol": "AGRX",
+    "name": "AgriX Supply Chain",
+    "sector": "Industrial",
+    "price": 25.8,
+    "peRatio": 10.4,
+    "dividendYield": 0.014,
+    "peerAveragePrice": 31.6,
+    "peerAveragePe": 14.9,
+    "beta": 0.9,
+    "esgScore": 0.7,
+    "metrics": {
+      "returnOnAssets": 0.09,
+      "inventoryTurns": 7.1,
+      "freeCashFlowYield": 0.085
+    }
+  }
+]

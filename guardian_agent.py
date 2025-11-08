@@ -4,7 +4,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from api_connector import APIConnector
 from balance_monitor import BalanceMonitor
@@ -129,6 +129,17 @@ class GuardianAgent:
     def process(self, payload: Dict[str, Any]) -> GuardianDecision:
         user_id = payload.get("userId")
         entities = payload.get("entities", {})
+        if payload.get("intent") == "analyze_transactions":
+            analysis_request = entities.get("analysisRequest", {})
+            transactions = analysis_request.get("transactions", [])
+            count = analysis_request.get("count", len(transactions) or 2)
+            result = self.analyze_transactions(user_id, transactions, payload.get("rawText", ""), count)
+            return GuardianDecision(
+                decision="ANALYSIS",
+                risk_score=0.0,
+                payment_id=None,
+                reason=result["summary"],
+            )
         if not user_id:
             raise ValueError("userId is required")
         user = self._resolve_user(user_id)
@@ -196,6 +207,22 @@ class GuardianAgent:
             payment_id=payment_id,
             reason=reason,
         )
+
+    def analyze_transactions(self, user_id: str, transactions: List[Dict[str, Any]], question: str, count: int) -> Dict[str, Any]:
+        if not user_id:
+            raise ValueError("userId is required for analysis")
+        if not transactions:
+            return {"summary": "No executed transactions available to analyze."}
+        facts = []
+        for tx in transactions[:count]:
+            facts.append(
+                (
+                    f"Payment {tx.get('paymentId')} -> {tx.get('recipient')} executed "
+                    f"for {tx.get('amount')} {tx.get('currency')} on {tx.get('lastExecutedAt') or tx.get('updatedAt')}"
+                )
+            )
+        summary = self.llm.answer_question(question or "Analyze past transactions.", facts)
+        return {"summary": summary, "transactions": facts}
 
 
 __all__ = ["GuardianAgent", "GuardianDecision"]

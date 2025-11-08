@@ -18,6 +18,7 @@ except ImportError:  # pragma: no cover - fallback when deps missing
     AutoModelForCausalLM = None
 
 JSON_PATTERN = re.compile(r"\{.*\}", re.S)
+STOCK_KEYWORDS = ("stock", "stocks", "equity", "equities", "share", "shares")
 
 
 class BaseArcLLM:
@@ -76,7 +77,7 @@ class HuggingFaceArcLLM(BaseArcLLM):
         prompt = (
             "You are ArcPay's intent agent. "
             "Classify the command and extract structured data. "
-            "Return JSON with keys intent (make_payment|schedule_payment|query|settings), "
+            "Return JSON with keys intent (make_payment|schedule_payment|stock_purchase|query|settings), "
             "confidence (0-1), and entities containing amount, currency, recipientId, "
             "scheduledTimestamp, and schedule.frequency.\n"
             f"Command: {json.dumps(text)}\nJSON:"
@@ -103,13 +104,16 @@ class HuggingFaceArcLLM(BaseArcLLM):
         return self._generate(prompt, max_new_tokens=200, temperature=0.1)
 
 
+
 class HeuristicArcLLM(BaseArcLLM):
     def classify_intent(self, text: str) -> Dict[str, Any]:
         lowered = text.lower()
         intent = "query"
-        if any(word in lowered for word in ["pay", "send", "transfer"]):
+        if any(word in lowered for word in STOCK_KEYWORDS):
+            intent = "stock_purchase"
+        elif any(word in lowered for word in ["pay", "send", "transfer", "purchase"]):
             intent = "make_payment"
-        if any(word in lowered for word in ["schedule", "recurring", "every"]):
+        if intent != "stock_purchase" and any(word in lowered for word in ["schedule", "recurring", "every"]):
             intent = "schedule_payment"
         entities: Dict[str, Any] = {}
         match = re.search(r"(\d+[\.\d+]*)", lowered)
@@ -121,7 +125,11 @@ class HeuristicArcLLM(BaseArcLLM):
 
     def score_risk(self, context: Dict[str, Any]) -> Dict[str, Any]:
         amount = float(context.get("amount", 0))
-        max_amount = float(context.get("max_amount", 1) or 1)
+        features = context.get("features") or {}
+        max_amount = context.get("max_amount")
+        if max_amount is None:
+            max_amount = features.get("max_amount", amount or 1)
+        max_amount = float(max_amount or 1)
         ratio = amount / max_amount
         risk = min(1.0, ratio)
         decision = "APPROVE"

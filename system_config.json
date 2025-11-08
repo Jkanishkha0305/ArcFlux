@@ -8,7 +8,8 @@
   "dataPaths": {
     "userDatabase": "user_database.json",
     "paymentSchedule": "payment_schedule.json",
-    "riskAssessmentDb": "risk_assessment_db.json"
+    "riskAssessmentDb": "risk_assessment_db.json",
+    "stockMarketDb": "stock_market_db.json"
   },
   "risk": {
     "maxPaymentAmount": 250000,

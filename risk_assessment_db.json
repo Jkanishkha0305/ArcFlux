@@ -158,5 +158,205 @@
       }
     },
     "timestamp": "2025-11-07T04:41:51.602901+00:00"
+  },
+  {
+    "request": {
+      "userId": "demo-user",
+      "intent": "stock_purchase",
+      "entities": {
+        "amount": 100.0,
+        "currency": "USDC",
+        "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers",
+        "stockRequest": {
+          "sector": "Banking",
+          "preference": "value",
+          "budget": 100.0
+        },
+        "selectedStock": "HARB",
+        "recipientId": "stock::HARB",
+        "recipientName": "Harborstone Financial (HARB)",
+        "recipientAddress": "arc1stockharb",
+        "memo": "Stock purchase for HARB",
+        "stockSelection": {
+          "symbol": "HARB",
+          "price": 42.1,
+          "sector": "Banking",
+          "budget": 100.0
+        },
+        "confirmation": true
+      },
+      "confidence": 0.5,
+      "targetAgent": "stock",
+      "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers"
+    },
+    "features": {
+      "amount": 100.0,
+      "max_amount": 5000.0,
+      "frequency": 1,
+      "new_recipient": true,
+      "balance_ratio": 24.995700000000003
+    },
+    "model": {
+      "riskScore": 1.0,
+      "decision": "DENY"
+    },
+    "verification": {
+      "status": "verified",
+      "details": {
+        "address": "arc1stockharb",
+        "status": "valid"
+      }
+    },
+    "timestamp": "2025-11-08T03:07:12.988889+00:00"
+  },
+  {
+    "request": {
+      "userId": "demo-user",
+      "intent": "stock_purchase",
+      "entities": {
+        "amount": 100.0,
+        "currency": "USDC",
+        "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers",
+        "stockRequest": {
+          "sector": "Banking",
+          "preference": "value",
+          "budget": 100.0
+        },
+        "selectedStock": "HARB",
+        "recipientId": "stock::HARB",
+        "recipientName": "Harborstone Financial (HARB)",
+        "recipientAddress": "arc1stockharb",
+        "memo": "Stock purchase for HARB",
+        "stockSelection": {
+          "symbol": "HARB",
+          "price": 42.1,
+          "sector": "Banking",
+          "budget": 100.0
+        },
+        "confirmation": true
+      },
+      "confidence": 0.5,
+      "targetAgent": "stock",
+      "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers"
+    },
+    "features": {
+      "amount": 100.0,
+      "max_amount": 5000.0,
+      "frequency": 1,
+      "new_recipient": true,
+      "balance_ratio": 24.9953
+    },
+    "model": {
+      "riskScore": 0.02,
+      "decision": "APPROVE"
+    },
+    "verification": {
+      "status": "verified",
+      "details": {
+        "address": "arc1stockharb",
+        "status": "valid"
+      }
+    },
+    "timestamp": "2025-11-08T03:07:41.785862+00:00"
+  },
+  {
+    "request": {
+      "userId": "demo-user",
+      "intent": "stock_purchase",
+      "entities": {
+        "amount": 100.0,
+        "currency": "USDC",
+        "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers",
+        "stockRequest": {
+          "sector": "Banking",
+          "preference": "value",
+          "budget": 100.0
+        },
+        "selectedStock": "HARB",
+        "recipientId": "stock::HARB",
+        "recipientName": "Harborstone Financial (HARB)",
+        "recipientAddress": "arc1stockharb",
+        "memo": "Stock purchase for HARB",
+        "stockSelection": {
+          "symbol": "HARB",
+          "price": 42.1,
+          "sector": "Banking",
+          "budget": 100.0
+        },
+        "confirmation": true
+      },
+      "confidence": 0.5,
+      "targetAgent": "stock",
+      "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers"
+    },
+    "features": {
+      "amount": 100.0,
+      "max_amount": 5000.0,
+      "frequency": 1,
+      "new_recipient": true,
+      "balance_ratio": 25.001199999999997
+    },
+    "model": {
+      "riskScore": 0.02,
+      "decision": "APPROVE"
+    },
+    "verification": {
+      "status": "verified",
+      "details": {
+        "address": "arc1stockharb",
+        "status": "valid"
+      }
+    },
+    "timestamp": "2025-11-08T03:08:45.924440+00:00"
+  },
+  {
+    "request": {
+      "userId": "demo-user",
+      "intent": "stock_purchase",
+      "entities": {
+        "amount": 100.0,
+        "currency": "USDC",
+        "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers",
+        "stockRequest": {
+          "sector": "Banking",
+          "preference": "value",
+          "budget": 100.0
+        },
+        "selectedStock": "BNKX",
+        "recipientId": "stock::BNKX",
+        "recipientName": "BankX Capital (BNKX)",
+        "recipientAddress": "arc1stockbnkx",
+        "memo": "Stock purchase for BNKX",
+        "stockSelection": {
+          "symbol": "BNKX",
+          "price": 48.72,
+          "sector": "Banking",
+          "budget": 100.0
+        },
+        "confirmation": true
+      },
+      "confidence": 0.5,
+      "targetAgent": "stock",
+      "rawText": "Find a stock banking sector and purchase it for 100 USDC least value compared to its peers"
+    },
+    "features": {
+      "amount": 100.0,
+      "max_amount": 5000.0,
+      "frequency": 1,
+      "new_recipient": true,
+      "balance_ratio": 25.0037
+    },
+    "model": {
+      "riskScore": 0.02,
+      "decision": "APPROVE"
+    },
+    "verification": {
+      "status": "verified",
+      "details": {
+        "address": "arc1stockbnkx",
+        "status": "valid"
+      }
+    },
+    "timestamp": "2025-11-08T03:20:53.929591+00:00"
   }
 ]

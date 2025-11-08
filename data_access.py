@@ -112,9 +112,34 @@ class RiskAssessmentRepository:
         return self.store.load()
 
 
+class StockRepository:
+    def __init__(self) -> None:
+        self.store = JSONDataStore(get_path("stockMarketDb"), default_factory=list)
+
+    def list_all(self) -> List[Dict[str, Any]]:
+        return self.store.load()
+
+    def list_by_sector(self, sector: Optional[str]) -> List[Dict[str, Any]]:
+        records = self.list_all()
+        if not sector:
+            return records
+        wanted = sector.lower()
+        return [record for record in records if record.get("sector", "").lower() == wanted]
+
+    def find(self, symbol: str) -> Optional[Dict[str, Any]]:
+        if not symbol:
+            return None
+        normalized = symbol.upper()
+        for record in self.list_all():
+            if record.get("symbol", "").upper() == normalized:
+                return record
+        return None
+
+
 __all__ = [
     "UserRepository",
     "PaymentScheduleRepository",
     "RiskAssessmentRepository",
     "User",
+    "StockRepository",
 ]

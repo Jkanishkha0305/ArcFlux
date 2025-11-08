@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 class QueryAgent:
     def __init__(self, model_loader: Optional[ModelLoader] = None) -> None:
-        self.llm: BaseArcLLM = (model_loader or ModelLoader()).get()
+        loader = model_loader or ModelLoader()
+        self.llm: BaseArcLLM = loader.get()
         self.users = UserRepository()
         self.payments = PaymentScheduleRepository()
         self.risk_repo = RiskAssessmentRepository()
@@ -65,16 +66,29 @@ class QueryAgent:
             return "balance"
         return "upcoming"
 
+    def _fetch_recent_transactions(self, user_id: str, limit: int = 3) -> List[str]:
+        executed = [p for p in self.payments.list(user_id) if p.get("status") == "EXECUTED"]
+        executed.sort(key=lambda p: p.get("updatedAt", ""), reverse=True)
+        formatted: List[str] = []
+        for record in executed[:limit]:
+            formatted.append(
+                f"Recent tx {record.get('paymentId')} -> {record.get('recipient')} "
+                f"for {record.get('amount')} {record.get('currency')} "
+                f"executed at {record.get('lastExecutedAt') or record.get('updatedAt')}"
+            )
+        return formatted
+
     def answer(self, user_id: str, question: str) -> str:
         topic = self._determine_topic(question)
+        facts = self._fetch_recent_transactions(user_id)
         if topic == "upcoming":
-            facts = self._fetch_upcoming(user_id)
+            facts += self._fetch_upcoming(user_id)
         elif topic == "history":
-            facts = self._fetch_history(user_id)
+            facts += self._fetch_history(user_id)
         elif topic == "risk":
-            facts = self._fetch_risk_flags(user_id)
+            facts += self._fetch_risk_flags(user_id)
         else:
-            facts = self._fetch_balance(user_id)
+            facts += self._fetch_balance(user_id)
         logger.info("QueryAgent answering topic %s for user %s", topic, user_id)
         return self.llm.answer_question(question, facts)
 
