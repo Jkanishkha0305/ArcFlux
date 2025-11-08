@@ -9,11 +9,13 @@
  * AI parses it → shows confirmation → creates payment
  */
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import VoiceInput from './VoiceInput';
 
 function CreatePayment({ apiUrl, walletId }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // ============================================
   // STATE MANAGEMENT
@@ -23,6 +25,17 @@ function CreatePayment({ apiUrl, walletId }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+
+  // Check if contact was passed from URL
+  useEffect(() => {
+    const contactAddress = searchParams.get('contact');
+    const contactName = searchParams.get('name');
+    if (contactAddress && !userInput) {
+      // Pre-fill with contact info
+      setUserInput(`Pay 10 USDC to ${contactName || contactAddress}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   /**
    * ============================================
@@ -186,14 +199,23 @@ function CreatePayment({ apiUrl, walletId }) {
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Describe your payment
+                <span className="ml-2 text-xs text-gray-500">(or use voice input)</span>
               </label>
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-                rows="4"
-                placeholder='Example: "Pay 50 USDC to 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb8 every week"'
-              />
+              <div className="relative">
+                <textarea
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  className="w-full px-4 py-3 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                  rows="4"
+                  placeholder='Example: "Pay 50 USDC to 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb8 every week"'
+                />
+                <div className="absolute bottom-3 right-3">
+                  <VoiceInput
+                    onTranscript={(transcript) => setUserInput(transcript)}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Example Commands */}

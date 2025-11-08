@@ -1,4 +1,4 @@
-# ArcPay - AI Payment Automation
+# ArcFlux - AI Payment Automation
 
 > Automate recurring USDC payments on Arc blockchain with natural language
 
@@ -7,9 +7,9 @@
 
 ---
 
-## What is ArcPay?
+## What is ArcFlux?
 
-ArcPay lets you create automated payments using simple English:
+ArcFlux lets you create automated payments using simple English:
 
 ```
 "Pay 50 USDC to Alice every week"

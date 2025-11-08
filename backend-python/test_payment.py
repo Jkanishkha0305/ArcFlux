@@ -8,7 +8,7 @@ import time
 BASE_URL = "http://localhost:8000"
 
 def test_payment():
-    print("🧪 Testing ArcPay Payment System\n")
+    print("🧪 Testing ArcFlux Payment System\n")
 
     # Step 1: Parse intent
     print("1️⃣ Parsing payment intent...")

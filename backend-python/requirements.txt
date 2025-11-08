@@ -1,5 +1,5 @@
 # ============================================
-# ARCPAY BACKEND DEPENDENCIES
+# ARCFLUX BACKEND DEPENDENCIES
 # ============================================
 # Python 3.9+ required
 #
@@ -23,6 +23,8 @@ alembic==1.12.1            # Database migrations
 # ============================================
 requests==2.31.0           # HTTP client
 httpx==0.25.1              # Async HTTP client
+# Note: Circle SDK should be installed separately if needed
+# The Circle SDK uses Pydantic v1, so we must use Pydantic v1.10.13
 
 # ============================================
 # AI / LLM
@@ -39,8 +41,10 @@ apscheduler==3.10.4        # Background job scheduler
 # UTILITIES
 # ============================================
 python-dotenv==1.0.0       # Load .env files
-pydantic==2.5.0            # Data validation
-pydantic-settings==2.1.0   # Settings management
+pydantic==1.10.13          # Data validation (v1 for Circle SDK compatibility)
+bcrypt==4.1.2              # Password hashing
+PyJWT==2.8.0               # JWT tokens for authentication
+# Note: pydantic-settings removed - using BaseSettings from pydantic v1 directly
 
 # ============================================
 # CORS

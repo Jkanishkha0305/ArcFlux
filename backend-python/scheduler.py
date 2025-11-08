@@ -14,8 +14,8 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 import logging
 
-from database import SessionLocal, get_due_payments, update_payment_after_execution, record_payment_history
-from circle_integration import circle_api
+from database import SessionLocal, get_due_payments, update_payment_after_execution, record_payment_history, User
+from circle_integration import circle_api, CircleAPI
 from config import settings
 
 # Setup logging
@@ -135,12 +135,23 @@ class PaymentScheduler:
         logger.info(f"   To: {payment.recipient_address}")
         logger.info(f"   Amount: {payment.amount} USDC")
         
+        # Get user's API key and entity secret if this is a user wallet
+        user = db.query(User).filter(User.wallet_id == payment.user_wallet_id).first()
+        if user and user.entity_secret:
+            # Use user's Circle API instance with their API key
+            user_api_key = user.circle_api_key or settings.circle_api_key
+            api_instance = CircleAPI(api_key=user_api_key, entity_secret=user.entity_secret)
+            logger.info(f"   Using user-specific API key and entity secret for wallet {payment.user_wallet_id}")
+        else:
+            # Use default Circle API instance
+            api_instance = circle_api
+        
         # Validate address
-        if not circle_api.is_valid_address(payment.recipient_address):
+        if not api_instance.is_valid_address(payment.recipient_address):
             raise Exception("Invalid recipient address")
         
         # Check balance
-        balance = circle_api.get_wallet_balance(payment.user_wallet_id)
+        balance = api_instance.get_wallet_balance(payment.user_wallet_id)
         balance_float = float(balance)
         
         if balance_float < payment.amount:
@@ -149,7 +160,7 @@ class PaymentScheduler:
             )
         
         # Execute transfer
-        transaction = circle_api.transfer_usdc(
+        transaction = api_instance.transfer_usdc(
             from_wallet_id=payment.user_wallet_id,
             to_address=payment.recipient_address,
             amount=payment.amount
@@ -166,7 +177,7 @@ class PaymentScheduler:
         tx_hash = None
         if transaction_id:
             try:
-                tx_status = circle_api.get_transaction_status(transaction_id)
+                tx_status = api_instance.get_transaction_status(transaction_id)
                 tx_hash = tx_status.get("txHash")
                 if tx_hash:
                     logger.info(f"✓ Transaction hash: {tx_hash}")

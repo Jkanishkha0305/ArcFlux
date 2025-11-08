@@ -1,6 +1,6 @@
-# ArcPay Python Backend
+# ArcFlux Python Backend
 
-> FastAPI + SQLAlchemy + OpenAI backend for ArcPay
+> FastAPI + SQLAlchemy + OpenAI backend for ArcFlux
 
 ## 🚀 Quick Start
 
@@ -10,25 +10,35 @@
 python --version  # Should be 3.9 or higher
 ```
 
-### 2. Create Virtual Environment
+### 2. Activate Conda Environment
+
+**IMPORTANT: Use the `arcpay` conda environment, not base!**
 
 ```bash
 cd backend-python
 
-# Create venv
-python -m venv venv
+# Activate the arcpay conda environment
+conda activate arcpay
+```
 
-# Activate it
-# On Mac/Linux:
-source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
+**OR if you don't have the arcpay environment yet:**
+```bash
+# Create a new conda environment (optional)
+conda create -n arcpay python=3.11
+conda activate arcpay
 ```
 
 ### 3. Install Dependencies
 
 ```bash
+# Make sure you're in the arcpay environment
+conda activate arcpay
+
+# Install dependencies
 pip install -r requirements.txt
+
+# The Circle SDK should already be installed in the arcpay environment
+# If not, install it separately
 ```
 
 ### 4. Configure Environment
@@ -175,7 +185,7 @@ Ask questions about payments
 
 ## 📊 Database
 
-Uses SQLite by default (file: `arcpay.db`)
+Uses SQLite by default (file: `arcflux.db`)
 
 **Tables:**
 - `scheduled_payments` - Active payment schedules
@@ -183,7 +193,7 @@ Uses SQLite by default (file: `arcpay.db`)
 
 **To use PostgreSQL instead:**
 ```env
-DATABASE_URL=postgresql://user:password@localhost/arcpay
+DATABASE_URL=postgresql://user:password@localhost/arcflux
 ```
 
 Then:
@@ -252,8 +262,8 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ```bash
-docker build -t arcpay-backend .
-docker run -p 8000:8000 --env-file .env arcpay-backend
+docker build -t arcflux-backend .
+docker run -p 8000:8000 --env-file .env arcflux-backend
 ```
 
 ---

@@ -1,4 +1,4 @@
-# 🚀 How to Start ArcPay
+# 🚀 How to Start ArcFlux
 
 ## Quick Start Guide
 
@@ -21,8 +21,8 @@ python main.py
 
 You should see:
 ```
-🚀 Starting ArcPay API...
-✓ ArcPay API ready!
+🚀 Starting ArcFlux API...
+✓ ArcFlux API ready!
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
@@ -54,7 +54,7 @@ VITE v5.0.7  ready in XXX ms
 ## 🎯 Access the Application
 
 1. **Open your browser:** http://localhost:5173
-2. **You should see:** ArcPay Dashboard with your wallet balance
+2. **You should see:** ArcFlux Dashboard with your wallet balance
 
 ---
 

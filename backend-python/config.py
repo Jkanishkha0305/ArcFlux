@@ -10,21 +10,27 @@ application configuration.
 import os
 from dotenv import load_dotenv
 from typing import List
+from pydantic import BaseSettings
 
 # Load environment variables from .env file
 load_dotenv()
 
 
-class Settings:
+class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
     
     # ============================================
     # CIRCLE API
     # ============================================
-    circle_api_key: str = os.getenv("CIRCLE_API_KEY", "")
-    circle_wallet_id: str = os.getenv("CIRCLE_WALLET_ID", "")
-    circle_entity_secret: str = os.getenv("CIRCLE_ENTITY_SECRET", "")
-    circle_api_base: str = "https://api.circle.com/v1"
+    circle_api_key: str = ""
+    circle_wallet_id: str = ""
+    circle_entity_secret: str = ""
+    # Default to sandbox for testing (wallet_creation.py auto-detects based on API key)
+    circle_api_base: str = "https://api-sandbox.circle.com/v1"
     
     # ============================================
     # ARC BLOCKCHAIN
@@ -39,14 +45,14 @@ class Settings:
     # ============================================
     # AI CONFIGURATION
     # ============================================
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
+    openai_api_key: str = ""
+    anthropic_api_key: str = ""
     ai_model: str = "gpt-3.5-turbo"
     
     # ============================================
     # DATABASE
     # ============================================
-    database_url: str = "sqlite:///./arcpay.db"
+    database_url: str = "sqlite:///./arcflux.db"
     
     # ============================================
     # API SERVER
@@ -60,6 +66,16 @@ class Settings:
     # ============================================
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 60
+    
+    def __init__(self, **kwargs):
+        # Load from environment variables with fallback to defaults
+        super().__init__(**kwargs)
+        # Override with explicit os.getenv for compatibility
+        self.circle_api_key = os.getenv("CIRCLE_API_KEY", self.circle_api_key)
+        self.circle_wallet_id = os.getenv("CIRCLE_WALLET_ID", self.circle_wallet_id)
+        self.circle_entity_secret = os.getenv("CIRCLE_ENTITY_SECRET", self.circle_entity_secret)
+        self.openai_api_key = os.getenv("OPENAI_API_KEY", self.openai_api_key)
+        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", self.anthropic_api_key)
     
     @property
     def cors_origins_list(self) -> List[str]:

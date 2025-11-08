@@ -12,10 +12,11 @@ Interact with Circle's API to:
 Uses Circle's Python SDK for developer-controlled wallets.
 """
 
-from typing import Optional, Dict, List
+from typing import Dict, List
 from config import settings
 from circle.web3 import developer_controlled_wallets, utils
 import uuid
+import requests
 
 
 class CircleAPI:
@@ -27,21 +28,78 @@ class CircleAPI:
     
     def __init__(self, api_key: str = None, entity_secret: str = None):
         self.api_key = api_key or settings.circle_api_key
-        self.entity_secret = entity_secret or settings.circle_entity_secret
         
-        # Initialize SDK client
-        self.client = utils.init_developer_controlled_wallets_client(
-            api_key=self.api_key,
-            entity_secret=self.entity_secret
-        )
+        # Handle entity_secret - it can be:
+        # 1. Hex string from database (64 chars = 32 bytes)
+        # 2. Hex string from .env file
+        # 3. Already bytes (from settings)
+        if entity_secret:
+            if isinstance(entity_secret, str):
+                # Check if it's a hex string
+                try:
+                    # Try to convert hex string to bytes
+                    if len(entity_secret) == 64:  # 32 bytes as hex = 64 chars
+                        self.entity_secret = bytes.fromhex(entity_secret)
+                    elif len(entity_secret) > 64:
+                        # Might be base64 or other format - try hex first
+                        try:
+                            self.entity_secret = bytes.fromhex(entity_secret)
+                        except ValueError:
+                            # Not hex, keep as string (might be base64 or other format)
+                            self.entity_secret = entity_secret
+                    else:
+                        # Short string, probably not hex - keep as is
+                        self.entity_secret = entity_secret
+                except ValueError:
+                    # Not valid hex, keep as string
+                    self.entity_secret = entity_secret
+            else:
+                # Already bytes or other type
+                self.entity_secret = entity_secret
+        else:
+            # Use from settings (which might be hex string from .env)
+            env_secret = settings.circle_entity_secret
+            if isinstance(env_secret, str) and len(env_secret) == 64:
+                try:
+                    self.entity_secret = bytes.fromhex(env_secret)
+                except ValueError:
+                    self.entity_secret = env_secret
+            else:
+                self.entity_secret = env_secret
         
-        # Initialize API instances
-        self.wallets_api = developer_controlled_wallets.WalletsApi(self.client)
-        self.transactions_api = developer_controlled_wallets.TransactionsApi(self.client)
+        # Initialize SDK client (only if we have both api_key and entity_secret)
+        if self.api_key and self.entity_secret:
+            try:
+                self.client = utils.init_developer_controlled_wallets_client(
+                    api_key=self.api_key,
+                    entity_secret=self.entity_secret
+                )
+                # Initialize API instances
+                self.wallets_api = developer_controlled_wallets.WalletsApi(self.client)
+                self.transactions_api = developer_controlled_wallets.TransactionsApi(self.client)
+            except Exception as e:
+                print(f"Warning: Failed to initialize Circle SDK client: {e}")
+                self.client = None
+                self.wallets_api = None
+                self.transactions_api = None
+        else:
+            self.client = None
+            self.wallets_api = None
+            self.transactions_api = None
+        
+        # Set base URL and headers for direct API requests (if needed)
+        self.base_url = settings.circle_api_base
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        } if self.api_key else {}
     
     def _request(self, method: str, endpoint: str, **kwargs) -> Dict:
         """
-        Make authenticated request to Circle API.
+        Make authenticated request to Circle API (fallback method).
+        
+        Note: This is a fallback for direct API calls. 
+        Prefer using the Circle SDK methods (wallets_api, transactions_api) when possible.
         
         Args:
             method: HTTP method (get, post, etc.)
@@ -54,6 +112,9 @@ class CircleAPI:
         Raises:
             Exception if request fails
         """
+        if not self.api_key:
+            raise Exception("Circle API key not configured")
+        
         url = f"{self.base_url}{endpoint}"
         
         response = requests.request(

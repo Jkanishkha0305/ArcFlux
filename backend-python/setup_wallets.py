@@ -119,7 +119,7 @@ def create_wallet_set(entity_secret_ciphertext):
         method="POST",
         json_data={
             "idempotencyKey": str(uuid.uuid4()),
-            "name": "ArcPay Development",
+            "name": "ArcFlux Development",
             "entitySecretCiphertext": entity_secret_ciphertext
         }
     )
@@ -152,7 +152,7 @@ def update_env_file(wallet_id, entity_secret_hex):
 
 
 def main():
-    print("🚀 ArcPay Wallet Setup\n")
+    print("🚀 ArcFlux Wallet Setup\n")
     print("=" * 50)
     print()
 

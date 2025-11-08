@@ -1,4 +1,4 @@
-# 🎯 ArcPay - Project Overview
+# 🎯 ArcFlux - Project Overview
 
 ## What You've Built So Far
 
@@ -68,7 +68,7 @@ A complete **AI-powered payment automation system** that lets users create recur
 - ✅ Error handling and user feedback
 
 ### 4. **Database** 💾
-- ✅ SQLite database (`arcpay.db`)
+- ✅ SQLite database (`arcflux.db`)
 - ✅ Tables: `scheduled_payments`, `payment_history`
 - ✅ Automatic migrations on startup
 
@@ -192,7 +192,7 @@ ArcFlux/
 │   ├── config.py            # Configuration
 │   ├── requirements.txt     # Dependencies
 │   ├── .env                 # Environment variables
-│   └── arcpay.db            # SQLite database
+│   └── arcflux.db           # SQLite database
 │
 ├── frontend/                 # React Frontend
 │   ├── src/

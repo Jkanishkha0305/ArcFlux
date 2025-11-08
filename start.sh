@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# Start ArcPay Backend and Frontend
+# Start ArcFlux Backend and Frontend
 
-echo "🚀 Starting ArcPay..."
+echo "🚀 Starting ArcFlux..."
 echo ""
 
 # Check if backend is already running
@@ -31,7 +31,7 @@ else
 fi
 
 echo ""
-echo "✅ ArcPay is starting!"
+echo "✅ ArcFlux is starting!"
 echo ""
 echo "📍 Backend:  http://localhost:8000"
 echo "�� Frontend: http://localhost:5173"
